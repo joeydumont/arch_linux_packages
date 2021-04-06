@@ -1,0 +1,7 @@
+*.tar.xz
+*.zip
+*.tar.zst
+*.log
+**/n64/*
+**/nano/*
+**/go-mtpfs/*

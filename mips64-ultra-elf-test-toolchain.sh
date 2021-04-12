@@ -6,7 +6,8 @@
 # should be notified via email so that I can run the ROMs.                    #
 ###############################################################################
 
-trap 'exit 1' TERM KILL INT QUIT ABRT
+trap 'exit 1' TERM INT QUIT ABRT
+set -x
 
 # Remember PROMPT_COMMAND
 export MIPS_PROMPT_COMMAND=${PROMPT_COMMAND}
@@ -29,7 +30,7 @@ push_prompt_command() {
 
 # Revert tab title to default value.
 pop_prompt_command() {
-  eval $MIPS_PROMPT_COMMAND
+  eval "$MIPS_PROMPT_COMMAND"
 }
 
 # Extract pkgver from the PKGBUILD
@@ -54,12 +55,11 @@ save_last_build() {
 build_package() {
   push_prompt_command "Building $1..."
   cwd=$(pwd)
-  cd $(pwd)/$1 || ( eerror "Directory does not exist."; exit 1 )
+  cd "$(pwd)/$1" || ( eerror "Directory does not exist."; exit 1 )
 
   makepkg -o &> /dev/null
-  check_last_build
 
-  if [[ ! $? -eq 0 || ! ${FORCE_REBUILD} -eq 0 ]]; then
+  if check_last_build || [[ ! ${FORCE_REBUILD} -eq 0 ]]; then
     # Rebuild packages that depend on this package (assumes that invocations are done in dep order).
     export FORCE_REBUILD=1
     if [[ "$#" -eq 1 ]]; then
@@ -75,22 +75,24 @@ build_package() {
     fi
     save_last_build
   else
-    einfo "Already built this package."
+    einfo "Already built $1."
   fi
 
   export PKGVER=$(get_pkgver)
-  cd ${cwd}
+  cd "${cwd}" || exit 1
   pop_prompt_command
 }
 
 build_package mips64-ultra-elf-binutils
-BINUTILS_VER=$PKGVER
+BINUTILS_VER=${PKGVER}
 
-build_package mips64-ultra-elf-gcc-stage1 ../mips64-ultra-elf-binutils/mips64-ultra-elf-binutils-${BINUTILS_VER}-x86_64.pkg.tar.zst
+build_package mips64-ultra-elf-gcc-stage1 ../mips64-ultra-elf-binutils/mips64-ultra-elf-binutils-"${BINUTILS_VER}"-x86_64.pkg.tar.zst
 GCCSTAGE1_VER=${PKGVER}
 
-build_package mips64-ultra-elf-newlib ../mips64-ultra-elf-binutils/mips64-ultra-elf-binutils-${BINUTILS_VER}-x86_64.pkg.tar.zst ../mips64-ultra-elf-gcc-stage1/mips64-ultra-elf-gcc-stage1-${GCCSTAGE1_VER}-x86_64.pkg.tar.zst
+build_package mips64-ultra-elf-newlib ../mips64-ultra-elf-binutils/mips64-ultra-elf-binutils-"${BINUTILS_VER}"-x86_64.pkg.tar.zst ../mips64-ultra-elf-gcc-stage1/mips64-ultra-elf-gcc-stage1-"${GCCSTAGE1_VER}"-x86_64.pkg.tar.zst
 NEWLIB_VER=${PKGVER}
 
-build_package mips64-ultra-elf-gcc ../mips64-ultra-elf-binutils/mips64-ultra-elf-binutils-${BINUTILS_VER}-x86_64.pkg.tar.zst ../mips64-ultra-elf-newlib/mips64-ultra-elf-newlib-${NEWLIB_VER}-x86_64.pkg.tar.zst
+build_package mips64-ultra-elf-gcc ../mips64-ultra-elf-binutils/mips64-ultra-elf-binutils-"${BINUTILS_VER}"-x86_64.pkg.tar.zst ../mips64-ultra-elf-newlib/mips64-ultra-elf-newlib-"${NEWLIB_VER}"-x86_64.pkg.tar.zst
 GCC_VER=${PKGVER}
+
+build_package mips64-ultra-elf-gdb

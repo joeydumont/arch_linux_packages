@@ -1,15 +1,32 @@
-From 9b38ea8a0c69ab9ffae78449c86265f6de66c393 Mon Sep 17 00:00:00 2001
+From 088019ce3dcf28d11c09cecadde91beef236613f Mon Sep 17 00:00:00 2001
 From: Joey Dumont <joey.dumont@gmail.com>
-Date: Sun, 2 May 2021 06:37:03 -0400
-Subject: [PATCH] Fix -Wformat-security warnings in libcpp/{expr.c,macro.c}.
+Date: Mon, 3 May 2021 07:27:38 -0400
+Subject: [PATCH] Fix format-security warnings.
 
+Compiling gcc with -Wformat-security turns up some errors. To fix them, we need to specify the
+format string rather than directly passing a variable to printf or, in this case, to functions that
+eventually call printf.
 ---
- libcpp/expr.c  | 19 +++++++++++--------
- libcpp/macro.c |  8 ++++----
- 2 files changed, 15 insertions(+), 12 deletions(-)
+ gcc/diagnostic.c | 2 +-
+ libcpp/expr.c    | 6 +++---
+ libcpp/macro.c   | 8 ++++----
+ 3 files changed, 8 insertions(+), 8 deletions(-)
 
+diff --git a/gcc/diagnostic.c b/gcc/diagnostic.c
+index 246d75256..4eabf2690 100644
+--- a/gcc/diagnostic.c
++++ b/gcc/diagnostic.c
+@@ -1884,7 +1884,7 @@ fancy_abort (const char *file, int line, const char *function)
+   if (global_dc->printer == NULL)
+     {
+       /* Print the error message.  */
+-      fnotice (stderr, diagnostic_kind_text[DK_ICE]);
++      fnotice (stderr, "%s", diagnostic_kind_text[DK_ICE]);
+       fnotice (stderr, "in %s, at %s:%d", function, trim_filename (file), line);
+       fputc ('\n', stderr);
+ 
 diff --git a/libcpp/expr.c b/libcpp/expr.c
-index dd5611dce..27f3f83af 100644
+index dd5611dce..319b225de 100644
 --- a/libcpp/expr.c
 +++ b/libcpp/expr.c
 @@ -809,10 +809,10 @@ cpp_classify_number (cpp_reader *pfile, const cpp_token *token,
@@ -17,7 +34,7 @@ index dd5611dce..27f3f83af 100644
  	  if (CPP_OPTION (pfile, c99))
              cpp_warning_with_line (pfile, CPP_W_LONG_LONG, virtual_location,
 -				   0, message);
-+				   0, "%s", message);
++				   0, "%", message);
            else
              cpp_pedwarning_with_line (pfile, CPP_W_LONG_LONG,
 -				      virtual_location, 0, message);
@@ -34,27 +51,6 @@ index dd5611dce..27f3f83af 100644
         }
  
        result |= CPP_N_INTEGER;
-@@ -836,12 +836,15 @@ cpp_classify_number (cpp_reader *pfile, const cpp_token *token,
-     {
-       if (!CPP_OPTION (pfile, binary_constants)
- 	  && CPP_PEDANTIC (pfile))
-+      {
-+	const char* message = CPP_OPTION(pfile, cplusplus)
-+	                      ? N_("binary constants are a C++14 feature "
-+				   "or GCC extension")
-+	                      : N_("binary constants are a C2X feature "
-+				  "or GCC extension");
- 	cpp_error_with_line (pfile, CPP_DL_PEDWARN, virtual_location, 0,
--			     CPP_OPTION (pfile, cplusplus)
--			     ? N_("binary constants are a C++14 feature "
--				  "or GCC extension")
--			     : N_("binary constants are a C2X feature "
--				  "or GCC extension"));
-+			     "%s", message);
-+      }
-       else if (CPP_OPTION (pfile, cpp_warn_c11_c2x_compat) > 0)
- 	cpp_warning_with_line (pfile, CPP_W_C11_C2X_COMPAT,
- 			       virtual_location, 0,
 diff --git a/libcpp/macro.c b/libcpp/macro.c
 index dff7c98a4..5c7a472dd 100644
 --- a/libcpp/macro.c

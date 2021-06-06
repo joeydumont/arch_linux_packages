@@ -76,8 +76,10 @@ build() {
   export CFLAGS="${CFLAGS/-pipe/} -Wno-error=format-security -Wformat-security"
   export CXXFLAGS="${CXXFLAGS/-pipe/} -Wno-error=format-security -Wformat-security"
 
-  export CFLAGS_FOR_TARGET="-march=x86-64 -mtune=generic -O2 -pipe -fno-plt -fexceptions -Wp,-D_FORTIFY_SOURCE=2 -Wno-error=format-security -Wformat-security"
-  export CXXFLAGS_FOR_TARGET="-march=x86-64 -mtune=generic -O2 -pipe -fno-plt -fexceptions -Wp,-D_FORTIFY_SOURCE=2 -Wno-error=format-security -Wformat-security"
+  # Newer gcc versions don't support the same flags as the oldest versions, and it seems
+  # that xgcc picks up CFLAGS if CFLAGS_FOR_TARGET aren't set (https://gcc.gnu.org/bugzilla/show_bug.cgi?id=25672).
+  export CFLAGS_FOR_TARGET="-march=x86-64 -mtune=generic -O2 -pipe -fno-plt -fexceptions -fstack-protector -Wp,-D_FORTIFY_SOURCE=2 -Wno-error=format-security -Wformat-security"
+  export CXXFLAGS_FOR_TARGET="-march=x86-64 -mtune=generic -O2 -pipe -fno-plt -fexceptions -fstack-protector -Wp,-D_FORTIFY_SOURCE=2 -Wno-error=format-security -Wformat-security"
 
   "${srcdir}/gcc/configure" \
     --prefix=/usr \

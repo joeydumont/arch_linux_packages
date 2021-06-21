@@ -1,11 +1,24 @@
+# Ignore archives
 *.tar.xz
 *.tar.gz
 *.zip
 *.tar.zst
+
+# Ignore makepkg dirs.
+**/src*
+**/pkg*
+
+# Ignore log files
 *.log
+
+# Ignore specific git cloned repos
 **/n64/*
 **/nano/*
 **/go-mtpfs/*
-**/.last_successful_build_chksum
+
+# Ignore makepkg files.
 **/src*
 **/pkg*
+
+# Ignore custom file used by test script.
+**/.last_successful_build_chksum

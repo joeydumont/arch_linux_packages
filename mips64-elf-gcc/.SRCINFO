@@ -21,11 +21,8 @@ pkgbase = mips64-elf-gcc
 	source = http://gcc.gnu.org/pub/gcc/releases/gcc-11.1.0/gcc-11.1.0.tar.xz
 	source = http://isl.gforge.inria.fr/isl-0.22.tar.xz
 	source = mabi32.patch
-	source = 0001-Fix-Wformat-security-warnings-in-libcpp-expr.c-macro.patch
 	sha256sums = 4c4a6fb8a8396059241c2e674b85b351c26a5d678274007f076957afa1cc9ddf
 	sha256sums = 6c8bc56c477affecba9c59e2c9f026967ac8bad01b51bdd07916db40a517b9fa
-	sha256sums = 368e2287adba14718dbd84dc75b2a7a2f65cb907e988b56813640ea8d9d2e951
-	sha256sums = 25e43fe0a0b7c90eeece701391ec5476c03765f0b2b09e49ba0449b3d92c3fd4
+	sha256sums = 86c06dfb12295e665204441ca17440d4e597da24b6cffad052c94268ec562169
 
 pkgname = mips64-elf-gcc
-

@@ -4,10 +4,6 @@
 *.zip
 *.tar.zst
 
-# Ignore makepkg dirs.
-**/src*
-**/pkg*
-
 # Ignore log files
 *.log
 

@@ -21,8 +21,10 @@ pkgbase = mips64-elf-gcc
 	source = http://gcc.gnu.org/pub/gcc/releases/gcc-11.1.0/gcc-11.1.0.tar.xz
 	source = http://isl.gforge.inria.fr/isl-0.22.tar.xz
 	source = mabi32.patch
+	source = gcc11-Wno-format-security.patch
 	sha256sums = 4c4a6fb8a8396059241c2e674b85b351c26a5d678274007f076957afa1cc9ddf
 	sha256sums = 6c8bc56c477affecba9c59e2c9f026967ac8bad01b51bdd07916db40a517b9fa
 	sha256sums = 86c06dfb12295e665204441ca17440d4e597da24b6cffad052c94268ec562169
+	sha256sums = 6f9a34812a07e49a568467df11d6ab19b9fd7d953e9ecd739c7a38d9df821b52
 
 pkgname = mips64-elf-gcc

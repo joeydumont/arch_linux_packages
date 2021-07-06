@@ -30,13 +30,6 @@ while sleep 180; do sudo -v; done &
 # Update the chroot.
 arch-nspawn "$CHROOT"/root pacman -Syu
 
-# Check if we want to force a rebuild of all the packages.
-if [[ -z ${FORCE_REBUILD} ]]; then
-  export FORCE_REBUILD=0
-else
-  export FORCE_REBUILD=1
-fi
-
 # some basic output functions (from Gentoo Prefix bootstrap)
 eerror() { echo "!!! $*" 1>&2; }
 einfo() { echo "* $*"; }
@@ -105,6 +98,14 @@ build_package() {
   pop_prompt_command
 }
 
+# Check if we want to force a rebuild of all the packages.
+if [[ -z ${FORCE_REBUILD} ]]; then
+  export FORCE_REBUILD=0
+else
+  export FORCE_REBUILD=1
+fi
+
+
 export VARIANT="mips64-ultra-elf"
 export NEWLIB_ARCH="x86_64"
 while getopts ":t:" opt; do
@@ -120,7 +121,6 @@ while getopts ":t:" opt; do
   esac
 done
 shift $((OPTIND -1))
-
 
 build_package "${VARIANT}"-binutils
 BINUTILS_VER="${PKGVER}"

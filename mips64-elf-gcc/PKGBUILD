@@ -18,10 +18,12 @@ provides=("${_target}-gcc-stage1")
 replaces=("${_target}-gcc-stage1")
 source=("http://gcc.gnu.org/pub/gcc/releases/gcc-${pkgver}/gcc-${pkgver}.tar.xz"
         "http://isl.gforge.inria.fr/isl-${_islver}.tar.xz"
-        "mabi32.patch")
+        "mabi32.patch"
+        "gcc11-Wno-format-security.patch")
 sha256sums=('4c4a6fb8a8396059241c2e674b85b351c26a5d678274007f076957afa1cc9ddf'
             '6c8bc56c477affecba9c59e2c9f026967ac8bad01b51bdd07916db40a517b9fa'
-            '86c06dfb12295e665204441ca17440d4e597da24b6cffad052c94268ec562169')
+            '86c06dfb12295e665204441ca17440d4e597da24b6cffad052c94268ec562169'
+            '6f9a34812a07e49a568467df11d6ab19b9fd7d953e9ecd739c7a38d9df821b52')
 
 prepare() {
   cd gcc-${pkgver}
@@ -38,13 +40,14 @@ prepare() {
 
   # patch multilib support for mabi=32
   patch --strip=1 --input="${srcdir}/mabi32.patch"
+
+  # Patch Werror=format-security issues.
+  patch --strip=1 --input="${srcdir}"/gcc11-Wno-format-security.patch
 }
 
 build() {
   cd build-gcc
 
-  export CFLAGS="${CFLAGS} -Wno-error=format-security -Wformat-security"
-  export CXXFLAGS="${CXXFLAGS} -Wno-error=format-security -Wformat-security"
   "${srcdir}"/gcc-${pkgver}/configure \
     --prefix=/usr \
     --target=${_target} \
@@ -64,6 +67,7 @@ build() {
     --enable-lto \
     --enable-multilib \
     --enable-plugin \
+    --disable-build-format-warnings \
     --disable-decimal-float \
     --disable-gold \
     --disable-libatomic \

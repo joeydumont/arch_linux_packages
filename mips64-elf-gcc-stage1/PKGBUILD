@@ -85,8 +85,7 @@ build() {
     --disable-libvtv \
     --disable-nls \
     --disable-shared \
-    --disable-threads \
-    --disable-werror
+    --disable-threads
 
   make
 }

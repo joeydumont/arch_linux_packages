@@ -7,34 +7,10 @@
 ###############################################################################
 
 # Kill background jobs started by this script.
-trap "trap - SIGTERM && kill -- -$$" SIGINT SIGTERM EXIT
-set -x
+trap 'trap - SIGTERM && kill -- -$$' SIGINT SIGTERM EXIT
 
 # Remember PROMPT_COMMAND
-export MIPS_PROMPT_COMMAND=${PROMPT_COMMAND}
-
-# Get path to this script.
-SOURCE="${BASH_SOURCE[0]}"
-while [ -h "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symlink
-  DIR="$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )"
-  SOURCE="$(readlink "$SOURCE")"
-  [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE" # if $SOURCE was a relative symlink, we need to resolve it relative to the path where the symlink file was located
-done
-export CHROOT="$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )"/chroot
-
-# Cache sudo credentials
-sudo -v
-while sleep 180; do sudo -v; done &
-
-# Update the chroot.
-arch-nspawn $CHROOT/root pacman -Syu
-
-# Check if we want to force a rebuild of all the packages.
-if [[ -z ${FORCE_REBUILD} ]]; then
-  export FORCE_REBUILD=0
-else
-  export FORCE_REBUILD=1
-fi
+MIPS_PROMPT_COMMAND=${PROMPT_COMMAND}
 
 # some basic output functions (from Gentoo Prefix bootstrap)
 eerror() { echo "!!! $*" 1>&2; }
@@ -53,7 +29,7 @@ pop_prompt_command() {
 # Extract pkgver from the PKGBUILD
 get_pkgver() {
   source PKGBUILD
-  echo ${pkgver}-${pkgrel}
+  echo "${pkgver}"-"${pkgrel}"
 }
 
 check_last_build() {
@@ -78,10 +54,12 @@ build_package() {
 
   if ! check_last_build || [[ ! ${FORCE_REBUILD} -eq 0 ]]; then
     einfo "Building $1"
+    einfo "  * You can follow the build by running "
+    echo "       tail -f ${cwd}/$1/build.log"
     # Rebuild packages that depend on this package (assumes that invocations are done in dep order).
     export FORCE_REBUILD=1
     if [[ "$#" -eq 1 ]]; then
-      makechrootpkg -c -r $CHROOT &> build.log || ( eerror "Failed to build $1"; exit 1 )
+      makechrootpkg -c -r "$CHROOT" &> build.log || { eerror "Failed to build $1"; exit 1; }
     else
       PKGS=
       for ((i = 2; i <= $#; i++));
@@ -89,27 +67,48 @@ build_package() {
         PKGS+=" -I ${!i}"
       done
 
-      makechrootpkg -c -r $CHROOT ${PKGS}  &> build.log || ( eerror "Failed to build $1"; exit 1 )
+      makechrootpkg -c -r "$CHROOT" ${PKGS}  &> build.log || { eerror "Failed to build $1"; exit 1; }
     fi
     save_last_build
   else
     einfo "Already built $1."
   fi
 
-  export PKGVER=$(get_pkgver)
+  PKGVER=$(get_pkgver)
+  export PKGVER
   cd "${cwd}" || exit 1
   pop_prompt_command
 }
 
-export VARIANT="mips64-ultra-elf"
-export NEWLIB_ARCH="x86_64"
-while getopts ":t:" opt; do
+# Get path to this script.
+SOURCE="${BASH_SOURCE[0]}"
+while [ -h "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symlink
+  DIR="$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )"
+  SOURCE="$(readlink "$SOURCE")"
+  [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE" # if $SOURCE was a relative symlink, we need to resolve it relative to the path where the symlink file was located
+done
+
+# Provide default values for some variables.
+CHROOT="$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )"/chroot
+VARIANT="mips64-ultra-elf"
+NEWLIB_ARCH="x86_64"
+FORCE_REBUILD=0
+
+while getopts ":t:fc:" opt; do
   case ${opt} in
     t )
-      export VARIANT=$OPTARG
-      export NEWLIB_ARCH=any
+      VARIANT=$OPTARG
+      NEWLIB_ARCH=any
       ;;
-    : )
+    f)
+      FORCE_REBUILD=1
+      einfo "Forcing a rebuild of ALL packages in the toolchain."
+      ;;
+    c)
+      CHROOT="$OPTARG"
+      einfo "Building in a non-default chroot: $CHROOT"
+      ;;
+    * )
       echo "Invalid option: -$OPTARG requires an argument" 1>&2
       exit 1
       ;;
@@ -118,16 +117,23 @@ done
 shift $((OPTIND -1))
 
 
+# Cache sudo credentials
+sudo -v
+while sleep 180; do sudo -v; done &
+
+# Update the chroot.
+arch-nspawn "$CHROOT"/root pacman -Syu
+
 build_package "${VARIANT}"-binutils
-BINUTILS_VER=${PKGVER}
+BINUTILS_VER="${PKGVER}"
 
 build_package "${VARIANT}"-gcc-stage1 ../"${VARIANT}"-binutils/"${VARIANT}"-binutils-"${BINUTILS_VER}"-x86_64.pkg.tar.zst
-GCCSTAGE1_VER=${PKGVER}
+GCCSTAGE1_VER="${PKGVER}"
 
 build_package "${VARIANT}"-newlib ../"${VARIANT}"-binutils/"${VARIANT}"-binutils-"${BINUTILS_VER}"-x86_64.pkg.tar.zst ../"${VARIANT}"-gcc-stage1/"${VARIANT}"-gcc-stage1-"${GCCSTAGE1_VER}"-x86_64.pkg.tar.zst
-NEWLIB_VER=${PKGVER}
+NEWLIB_VER="${PKGVER}"
 
 build_package "${VARIANT}"-gcc ../"${VARIANT}"-binutils/"${VARIANT}"-binutils-"${BINUTILS_VER}"-x86_64.pkg.tar.zst ../"${VARIANT}"-newlib/"${VARIANT}"-newlib-"${NEWLIB_VER}"-"${NEWLIB_ARCH}".pkg.tar.zst
-GCC_VER=${PKGVER}
+#GCC_VER="${PKGVER}"
 
 build_package "${VARIANT}"-gdb

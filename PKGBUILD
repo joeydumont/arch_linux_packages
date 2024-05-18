@@ -3,7 +3,7 @@
 
 _target=mips64-elf
 pkgname=${_target}-gcc-stage1
-pkgver=13.2.0
+pkgver=14.1.0
 _islver=0.26
 pkgrel=1
 pkgdesc="The GNU Compiler Collection. Stage 1 for toolchain building (${_target})"
@@ -17,7 +17,7 @@ options=('!emptydirs' '!strip')
 source=("http://gcc.gnu.org/pub/gcc/releases/gcc-${pkgver}/gcc-${pkgver}.tar.xz"
         "https://libisl.sourceforge.io/isl-${_islver}.tar.xz"
         "mabi32.patch")
-sha256sums=('e275e76442a6067341a27f04c5c6b83d8613144004c0413528863dc6b5c743da'
+sha256sums=('e283c654987afe3de9d8080bc0bd79534b5ca0d681a73a11ff2b5d3767426840'
             'a0b5cb06d24f9fa9e77b55fabbe9a3c94a336190345c2555f9915bb38e976504'
             '86c06dfb12295e665204441ca17440d4e597da24b6cffad052c94268ec562169')
 

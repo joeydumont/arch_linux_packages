@@ -1,0 +1,37 @@
+post_install() {
+  mkdir -p /var/lib/duplicati
+  chown -R duplicati:duplicati /var/lib/duplicati
+
+  cat  <<EOF
+  * UI can be accessed via following URL: http://localhost:8200
+  * Running duplicati user instance (using current user account)
+    - set up database password:              systemctl --user edit duplicati
+           [Service]
+           Environment="SETTINGS_ENCRYPTION_KEY=<your_password_here>"
+      (see https://github.com/duplicati/duplicati/releases/tag/v2.0.9.106_canary_2024-09-03 for details)
+
+    - to start duplicati manually:           systemctl --user start duplicati
+    - to autostart duplicati on user login:  systemctl --user enable duplicati
+  *
+  * To run Duplicati.Server.exe as root, simply use systemd's "drop-in" feature
+  * and specify
+  *    User=root
+  *    Group=root
+
+EOF
+}
+
+## arg 1:  the new package version
+## arg 2:  the old package version
+post_upgrade() {
+  mkdir -p /var/lib/duplicati
+  chown -R duplicati:duplicati /var/lib/duplicati
+
+  cat  <<EOF
+  * UI can be accessed via following URL: http://localhost:8200
+  * Running duplicati user instance (using current user account)
+    - to reload user systemd modules:        systemctl --user daemon-reload
+    - to start duplicati manually:           systemctl --user start duplicati
+    - to autostart duplicati on user login:  systemctl --user enable duplicati
+EOF
+}

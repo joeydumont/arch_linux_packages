@@ -96,7 +96,7 @@ FORCE_REBUILD=0
 
 while getopts ":t:fc:" opt; do
   case ${opt} in
-    t )
+    t)
       VARIANT=$OPTARG
       NEWLIB_ARCH=any
       ;;

@@ -3,6 +3,7 @@
 *.tar.gz
 *.zip
 *.tar.zst
+*.tar.bz2
 
 # Ignore log files
 *.log

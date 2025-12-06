@@ -1,0 +1,2 @@
+FROM archlinux:base-devel
+RUN pacman -Syy --noconfirm && pacman -Syu --noconfirm && pacman -S --noconfirm shellcheck shfmt

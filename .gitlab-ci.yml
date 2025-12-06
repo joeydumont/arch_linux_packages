@@ -1,0 +1,54 @@
+stages:
+  - image
+  - check
+
+build-ci-image:
+  stage: image
+  image: docker:27       # or whatever the runner supports
+  services:
+    - docker:27-dind
+  rules:
+    - changes:
+        - Dockerfile.ci
+  script:
+    - docker build -t $CI_REGISTRY_IMAGE/ci-base:$CI_COMMIT_SHA -f Dockerfile.ci .
+    - docker tag $CI_REGISTRY_IMAGE/ci-base:$CI_COMMIT_SHA $CI_REGISTRY_IMAGE/ci-base:latest
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin $CI_REGISTRY
+    - docker push $CI_REGISTRY_IMAGE/ci-base:$CI_COMMIT_SHA
+    - docker push $CI_REGISTRY_IMAGE/ci-base:latest
+  
+rua_check:
+  stage: check
+  image: ci-base:latest
+  script: >
+    EXIT_STATUS=0
+    while IFS= read -d '' -r pkg; do
+      # Emulate rua shellcheck. 
+      # We only do this because `rua shellcheck` doesn't allow us to pass options
+      # to shellcheck, otherwise we could pass `-S info` to error on info/warnings.
+      # `rua shellcheck` also adds lines prior to the start of the PKGBUILD, so the error
+      # reporting doesn't have the proper line number.
+      echo $pkg
+      printf "%s\n%s" "$(cat $pkg/PKGBUILD)" "$(cat PKGBUILD-suffix.sh)" | shellcheck -o=all -e SC2164 -s bash -S info /dev/stdin
+      (( EXIT_STATUS |= PIPESTATUS[1] ))
+    done < <(find . -mindepth 1 -maxdepth 1 -type d ! -iname '*.git' -print0 | sort -nr)
+
+    while IFS= read -d '' -r script; do
+      shellcheck -o=all -S info "$script"
+      (( EXIT_STATUS |= $? ))
+    done < <(find . -maxdepth 2 -type f ! -iname "PKGBUILD*" -iname "*.sh" -print0)
+
+    exit $EXIT_STATUS
+
+fmt:
+  stage: check
+  image: ci-base:latest
+  script: >
+    EXIT_STATUS=0
+    while IFS= read -d '' -r script; do 
+      shfmt -i 2 -d $script
+      (( EXIT_STATUS |= $? ))
+    done < <(find . -maxdepth 2 -type f \( -iname "PKGBUILD" -or -iname "*.sh" \) -print0 | sort -nr)
+
+    exit $EXIT_STATUS
+      

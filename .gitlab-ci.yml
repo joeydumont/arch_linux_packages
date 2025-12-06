@@ -2,20 +2,20 @@ stages:
   - image
   - check
 
-build-ci-image:
-  stage: image
-  image: docker:27       # or whatever the runner supports
-  services:
-    - docker:27-dind
-  rules:
-    - changes:
-        - Dockerfile.ci
-  script:
-    - docker build -t $CI_REGISTRY_IMAGE/ci-base:$CI_COMMIT_SHA -f Dockerfile.ci .
-    - docker tag $CI_REGISTRY_IMAGE/ci-base:$CI_COMMIT_SHA $CI_REGISTRY_IMAGE/ci-base:latest
-    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin $CI_REGISTRY
-    - docker push $CI_REGISTRY_IMAGE/ci-base:$CI_COMMIT_SHA
-    - docker push $CI_REGISTRY_IMAGE/ci-base:latest
+build_image:
+  stage: build
+  image: moby/buildkit:rootless
+  variables:
+    BUILDKITD_FLAGS: --oci-worker-no-process-sandbox
+  before_script:
+    - mkdir -p ~/.docker
+    - echo "{\"auths\":{\"$CI_REGISTRY\":{\"username\":\"$CI_REGISTRY_USER\",\"password\":\"$CI_REGISTRY_PASSWORD\"}}}" > ~/.docker/config.json
+  script: >
+      buildctl-daemonless.sh build \
+        --frontend dockerfile.v0 \
+        --local context=. \
+        --local dockerfile=Dockerfile.ci \
+        --output type=image,name=$CI_REGISTRY_IMAGE:$CI_COMMIT_SHA,push=true
   
 rua_check:
   stage: check

@@ -2,20 +2,22 @@ stages:
   - image
   - check
 
-build_image:
+variables:
+  DOCKER_TLS_CERTDIR: "/certs"
+
+build-image:
+  image: docker:latest
+  services:
+    - docker:dind
   stage: image
-  image: moby/buildkit:rootless
-  variables:
-    BUILDKITD_FLAGS: --oci-worker-no-process-sandbox
   before_script:
-    - mkdir -p ~/.docker
-    - echo "{\"auths\":{\"$CI_REGISTRY\":{\"username\":\"$CI_REGISTRY_USER\",\"password\":\"$CI_REGISTRY_PASSWORD\"}}}" > ~/.docker/config.json
-  script: >
-      buildctl-daemonless.sh build \
-        --frontend dockerfile.v0 \
-        --local context=. \
-        --local dockerfile=Dockerfile.ci \
-        --output type=image,name=$CI_REGISTRY_IMAGE:$CI_COMMIT_SHA,push=true
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - docker buildx create --use --driver docker-container --name builder
+    - docker buildx inspect --bootstrap
+  script:
+    - docker buildx build --tag $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA --push -f Dockerfile.ci
+  after_script:
+    - docker buildx rm builder
   
 rua_check:
   stage: check

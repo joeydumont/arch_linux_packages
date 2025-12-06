@@ -3,7 +3,7 @@ stages:
   - check
 
 build_image:
-  stage: build
+  stage: image
   image: moby/buildkit:rootless
   variables:
     BUILDKITD_FLAGS: --oci-worker-no-process-sandbox

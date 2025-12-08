@@ -4,6 +4,7 @@ stages:
 
 build-image:
   image: docker:27-cli
+  stage: image
   variables:
     #DOCKER_HOST: "unix:///var/run/docker.sock"
     DOCKER_BUILDKIT: "1"

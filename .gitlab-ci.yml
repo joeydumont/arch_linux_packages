@@ -15,6 +15,7 @@ build-image:
     - echo "{\"auths\":{\"$CI_REGISTRY\":{\"username\":\"$CI_REGISTRY_USER\",\"password\":\"$CI_REGISTRY_PASSWORD\"}}}" > /kaniko/.docker/config.json
 
     # Build and push
+    - cat /kaniko/.docker/config.json
     - echo "$CI_REGISTRY_IMAGE:latest"
     - nslookup "$CI_REGISTRY"
     - /kaniko/executor

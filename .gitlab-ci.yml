@@ -2,17 +2,25 @@ stages:
   - image
   - check
 
-build:
-  image: moby/buildkit:rootless
+build-image:
   stage: image
+  image:
+    name: gcr.io/kaniko-project/executor:debug
+    entrypoint: [""]
+  variables:
+    DOCKER_CONFIG: /kaniko/.docker
   script:
-    - buildkitd --oci-worker-no-process-sandbox &
-    - sleep 3
-    - buildctl build \
-        --frontend dockerfile.v0 \
-        --local context=. \
-        --local dockerfile=Dockerfile.ci
+    # Auth to GitLab registry
+    - mkdir -p /kaniko/.docker
+    - echo "{\"auths\":{\"$CI_REGISTRY\":{\"username\":\"$CI_REGISTRY_USER\",\"password\":\"$CI_REGISTRY_PASSWORD\"}}}" > /kaniko/.docker/config.json
 
+    # Build and push
+    - /kaniko/executor
+        --context "$CI_PROJECT_DIR"
+        --dockerfile "$CI_PROJECT_DIR/Dockerfile.ci"
+        --destination "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHA"
+        --destination "$CI_REGISTRY_IMAGE:latest"
+        --cache=true
 
 rua_check:
   stage: check

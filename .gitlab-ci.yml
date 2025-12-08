@@ -2,16 +2,17 @@ stages:
   - image
   - check
 
-build-image:
-  image: docker:27-cli
+build:
+  image: moby/buildkit:rootless
   stage: image
-  variables:
-    DOCKER_HOST: "unix:///var/run/docker.sock"
-    DOCKER_BUILDKIT: "1"
-  services: [] # IMPORTANT: disable implicit dind
   script:
-    - docker buildx create --use || true
-    - docker buildx build -t my-image:latest .
+    - buildkitd --oci-worker-no-process-sandbox &
+    - sleep 3
+    - buildctl build \
+        --frontend dockerfile.v0 \
+        --local context=. \
+        --local dockerfile=Dockerfile.ci
+
 
 rua_check:
   stage: check

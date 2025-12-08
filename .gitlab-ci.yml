@@ -6,8 +6,9 @@ build-image:
   image: docker:27-cli
   stage: image
   variables:
-    #DOCKER_HOST: "unix:///var/run/docker.sock"
+    DOCKER_HOST: "unix:///run/user/107/docker.sock"
     DOCKER_BUILDKIT: "1"
+  services: [] # IMPORTANT: disable implicit dind
   script:
     - docker buildx create --use || true
     - docker buildx build -t my-image:latest .

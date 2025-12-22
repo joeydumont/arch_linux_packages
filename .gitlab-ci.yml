@@ -50,7 +50,7 @@ rua_check:
 
 fmt:
   stage: check
-  image: registry.thewanderingtree.ca/ci-base:latest
+  image: "$CI_REGISTRY_IMAGE:latest"
   script: >
     EXIT_STATUS=0
     while IFS= read -d '' -r script; do 

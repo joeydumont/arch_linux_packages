@@ -27,7 +27,7 @@ build-image:
 
 rua_check:
   stage: check
-  image: ci-base:latest
+  image: registry.thewanderingtree.ca/ci-base:latest
   script: >
     EXIT_STATUS=0
     while IFS= read -d '' -r pkg; do
@@ -50,7 +50,7 @@ rua_check:
 
 fmt:
   stage: check
-  image: ci-base:latest
+  image: registry.thewanderingtree.ca/ci-base:latest
   script: >
     EXIT_STATUS=0
     while IFS= read -d '' -r script; do 

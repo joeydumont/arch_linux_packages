@@ -28,7 +28,7 @@ build-image:
 rua_check:
   stage: check
   image: "$CI_REGISTRY_IMAGE:latest"
-  script: >
+  script: |
     EXIT_STATUS=0
     while IFS= read -d '' -r pkg; do
       # Emulate rua shellcheck. 
@@ -51,7 +51,7 @@ rua_check:
 fmt:
   stage: check
   image: "$CI_REGISTRY_IMAGE:latest"
-  script: >
+  script: |
     EXIT_STATUS=0
     while IFS= read -d '' -r script; do 
       shfmt -i 2 -d $script

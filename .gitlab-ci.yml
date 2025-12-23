@@ -4,6 +4,9 @@ stages:
 
 build-image:
   stage: image
+  rules:
+    - changes:
+      - Dockerfile.ci
   image:
     name: gcr.io/kaniko-project/executor:debug
     entrypoint: [""]
@@ -30,7 +33,7 @@ rua_check:
   image: "$CI_REGISTRY_IMAGE:latest"
   script: |
     EXIT_STATUS=0
-    set -x
+    set +eo pipefail
     while IFS= read -d '' -r pkg; do
       # Emulate rua shellcheck. 
       # We only do this because `rua shellcheck` doesn't allow us to pass options
@@ -54,6 +57,7 @@ fmt:
   image: "$CI_REGISTRY_IMAGE:latest"
   script: |
     EXIT_STATUS=0
+    set +e
     while IFS= read -d '' -r script; do 
       shfmt -i 2 -d $script
       (( EXIT_STATUS |= $? ))

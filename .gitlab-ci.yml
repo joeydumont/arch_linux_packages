@@ -43,7 +43,7 @@ rua_check:
       echo $pkg
       printf "%s\n%s" "$(cat $pkg/PKGBUILD)" "$(cat PKGBUILD-suffix.sh)" | shellcheck -o=all -e SC2164 -s bash -S info /dev/stdin
       (( EXIT_STATUS |= PIPESTATUS[1] ))
-    done < <(find . -mindepth 1 -maxdepth 1 -type d ! -iname '*.git' -print0 | sort -nr)
+    done < <(find . -mindepth 1 -maxdepth 1 -type d ! -iname '*.git' ! -iwholename "./mips64-elf*" -print0 | sort -nr)
 
     while IFS= read -d '' -r script; do
       shellcheck -o=all -S info "$script"

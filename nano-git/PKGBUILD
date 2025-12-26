@@ -16,35 +16,35 @@ replaces=('nano-svn')
 sha512sums=('SKIP')
 
 pkgver() {
-    # Identify latest version.
-    cd "$srcdir/nano"
-    git log -1 --format="%cd" --date=short | sed 's|-||g'
+  # Identify latest version.
+  cd "$srcdir/nano"
+  git log -1 --format="%cd" --date=short | sed 's|-||g'
 }
 
 prepare() {
-    # Running the configure script.
-    cd "$srcdir/nano"
-    ./autogen.sh
+  # Running the configure script.
+  cd "$srcdir/nano"
+  ./autogen.sh
 
-    ./configure \
+  ./configure \
     --prefix=/usr \
-      --sysconfdir=/etc \
-      --enable-color \
-      --enable-nanorc \
-      --enable-multibuffer \
-      --bindir=/usr/bin \
-      --sbindir=/usr/bin \
-      --disable-wrapping-as-root
+    --sysconfdir=/etc \
+    --enable-color \
+    --enable-nanorc \
+    --enable-multibuffer \
+    --bindir=/usr/bin \
+    --sbindir=/usr/bin \
+    --disable-wrapping-as-root
 }
 
 build() {
-    cd "$srcdir/nano"
-    make
+  cd "$srcdir/nano"
+  make
 }
 
 package() {
-    # Moving everything to pkg/.
-    cd "$srcdir/nano"
-    make DESTDIR="$pkgdir" sbindir=/usr/bin install
-    install -DTm644 "$srcdir/nano/doc/sample.nanorc" "$pkgdir/etc/nanorc"
+  # Moving everything to pkg/.
+  cd "$srcdir/nano"
+  make DESTDIR="$pkgdir" sbindir=/usr/bin install
+  install -DTm644 "$srcdir/nano/doc/sample.nanorc" "$pkgdir/etc/nanorc"
 }

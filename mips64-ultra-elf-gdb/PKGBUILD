@@ -11,10 +11,14 @@ url='https://www.gnu.org/software/gdb/'
 makedepends=(git)
 options=(!emptydirs)
 depends=(zstd gdb-common mpfr guile libelf)
-source=("https://ftp.gnu.org/gnu/gdb/gdb-${_gdbver}.tar.xz"
-        "git+https://github.com/glankk/n64.git#branch=n64-ultra")
-sha256sums=('bcfcd095528a987917acf9fff3f1672181694926cc18d609c99d0042c00224c5'
-            'SKIP')
+source=(
+  "https://ftp.gnu.org/gnu/gdb/gdb-${_gdbver}.tar.xz"
+  "git+https://github.com/glankk/n64.git#branch=n64-ultra"
+)
+sha256sums=(
+  'bcfcd095528a987917acf9fff3f1672181694926cc18d609c99d0042c00224c5'
+  'SKIP'
+)
 
 pkgver() {
   cd "${srcdir}/n64/"

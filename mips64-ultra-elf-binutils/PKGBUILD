@@ -10,11 +10,14 @@ arch=('x86_64')
 license=('GPL')
 makedepends=('git')
 depends=('libelf')
-source=("ftp://ftp.gnu.org/gnu/binutils/binutils-${_binutilsver}.tar.bz2"
-        "git+https://github.com/glankk/n64.git#branch=n64-ultra"
+source=(
+  "ftp://ftp.gnu.org/gnu/binutils/binutils-${_binutilsver}.tar.bz2"
+  "git+https://github.com/glankk/n64.git#branch=n64-ultra"
 )
-sha256sums=('860daddec9085cb4011279136fc8ad29eb533e9446d7524af7f517dd18f00224'
-            'SKIP')
+sha256sums=(
+  '860daddec9085cb4011279136fc8ad29eb533e9446d7524af7f517dd18f00224'
+  'SKIP'
+)
 
 pkgver() {
   cd "${srcdir}/n64/"

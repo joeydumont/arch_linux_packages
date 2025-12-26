@@ -10,21 +10,19 @@ url='http://sourceware.org/newlib/'
 license=('BSD')
 makedepends=("${_target}-gcc-stage1" "git")
 options=('!strip' '!emptydirs')
-source=("ftp://sourceware.org/pub/newlib/newlib-${_newlibver}.tar.gz"
-        "git+https://github.com/glankk/n64.git#branch=n64-ultra"
+source=(
+  "ftp://sourceware.org/pub/newlib/newlib-${_newlibver}.tar.gz"
+  "git+https://github.com/glankk/n64.git#branch=n64-ultra"
 )
-sha256sums=('33f12605e0054965996c25c1382b3e463b0af91799001f5bb8c0630f2ec8c852'
-            'SKIP')
+sha256sums=(
+  '33f12605e0054965996c25c1382b3e463b0af91799001f5bb8c0630f2ec8c852'
+  'SKIP'
+)
 
 pkgver() {
   cd "${srcdir}/n64/"
   printf "%s_r%s.%s" "${_newlibver}" "$(git rev-list --count HEAD)" "$(git rev-parse --short HEAD)"
 }
-
-#prepare() {
-  # Apply the patch.
-  #patch -d "${srcdir}/newlib-${_newlibver}" -p 1 < "${srcdir}/n64/config/newlib/newlib.diff"
-#}
 
 build() {
 

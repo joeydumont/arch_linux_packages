@@ -15,14 +15,18 @@ conflicts=("${_target}-gcc-stage1")
 provides=("${_target}-gcc-stage1")
 replaces=("${_target}-gcc-stage1")
 options=(!emptydirs)
-source=("http://gcc.gnu.org/pub/gcc/releases/gcc-${_gccver}/gcc-${_gccver}.tar.xz"
-        "https://libisl.sourceforge.io/isl-${_islver}.tar.bz2"
-        "git+https://github.com/glankk/n64.git#branch=n64-ultra"
-        "gcc13-Wno-format-security.patch")
-sha256sums=('438fd996826b0c82485a29da03a72d71d6e3541a83ec702df4271f6fe025d24e'
-            '626335529331f7c89fec493de929e2e92fb3d8cc860fc7af554e0518ee0029ee'
-            'SKIP'
-            '75bcf36e10fd50f7b21d80db4fcc9b58d2c658f2c749b7cf2f9369b31f147a6d')
+source=(
+  "http://gcc.gnu.org/pub/gcc/releases/gcc-${_gccver}/gcc-${_gccver}.tar.xz"
+  "https://libisl.sourceforge.io/isl-${_islver}.tar.bz2"
+  "git+https://github.com/glankk/n64.git#branch=n64-ultra"
+  "gcc13-Wno-format-security.patch"
+)
+sha256sums=(
+  '438fd996826b0c82485a29da03a72d71d6e3541a83ec702df4271f6fe025d24e'
+  '626335529331f7c89fec493de929e2e92fb3d8cc860fc7af554e0518ee0029ee'
+  'SKIP'
+  '75bcf36e10fd50f7b21d80db4fcc9b58d2c658f2c749b7cf2f9369b31f147a6d'
+)
 
 pkgver() {
   cd "${srcdir}/n64/"

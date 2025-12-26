@@ -28,13 +28,18 @@ pop_prompt_command() {
 
 # Extract pkgver from the PKGBUILD
 get_pkgver() {
+  # Dynamically sourced, not useful for shellcheck.
+  # shellcheck disable=SC1091
   source PKGBUILD
+
+  # Variables from PKGBUILD, which shellcheck can't source.
+  # shellcheck disable=SC2154
   echo "${pkgver}"-"${pkgrel}"
 }
 
 check_last_build() {
   # Check that the last build was successful.
-  diff <(sha256sum PKGBUILD) <(cat .last_successful_build_chksum 2> /dev/null) &>/dev/null
+  diff <(sha256sum PKGBUILD) <(cat .last_successful_build_chksum 2> /dev/null) &> /dev/null
   return $?
 }
 
@@ -48,7 +53,10 @@ save_last_build() {
 build_package() {
   push_prompt_command "Building $1..."
   cwd=$(pwd)
-  cd "$(pwd)/$1" || ( eerror "Directory does not exist."; exit 1 )
+  cd "$(pwd)/$1" || (
+    eerror "Directory does not exist."
+    exit 1
+  )
 
   makepkg -o &> /dev/null
 
@@ -59,15 +67,22 @@ build_package() {
     # Rebuild packages that depend on this package (assumes that invocations are done in dep order).
     export FORCE_REBUILD=1
     if [[ "$#" -eq 1 ]]; then
-      makechrootpkg -c -r "$CHROOT" &> build.log || { eerror "Failed to build $1"; exit 1; }
+      makechrootpkg -c -r "$CHROOT" &> build.log || {
+        eerror "Failed to build $1"
+        exit 1
+      }
     else
       PKGS=
-      for ((i = 2; i <= $#; i++));
-      do
+      for ((i = 2; i <= $#; i++)); do
         PKGS+=" -I ${!i}"
       done
 
-      makechrootpkg -c -r "$CHROOT" ${PKGS}  &> build.log || { eerror "Failed to build $1"; exit 1; }
+      # PKGS can't be quoted here, otherwise it doesn't get passed properly ot makechrootpkg.
+      # shellcheck disable=SC2086
+      makechrootpkg -c -r "$CHROOT" ${PKGS} &> build.log || {
+        eerror "Failed to build $1"
+        exit 1
+      }
     fi
     save_last_build
   else
@@ -83,13 +98,13 @@ build_package() {
 # Get path to this script.
 SOURCE="${BASH_SOURCE[0]}"
 while [ -h "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symlink
-  DIR="$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )"
+  DIR="$(cd -P "$(dirname "$SOURCE")" > /dev/null 2>&1 && pwd)"
   SOURCE="$(readlink "$SOURCE")"
   [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE" # if $SOURCE was a relative symlink, we need to resolve it relative to the path where the symlink file was located
 done
 
 # Provide default values for some variables.
-CHROOT="$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )"/chroot
+CHROOT="$(cd -P "$(dirname "$SOURCE")" > /dev/null 2>&1 && pwd)"/chroot
 VARIANT="mips64-ultra-elf"
 NEWLIB_ARCH="x86_64"
 FORCE_REBUILD=0
@@ -108,14 +123,13 @@ while getopts ":t:fc:" opt; do
       CHROOT="$OPTARG"
       einfo "Building in a non-default chroot: $CHROOT"
       ;;
-    * )
+    *)
       echo "Invalid option: -$OPTARG requires an argument" 1>&2
       exit 1
       ;;
   esac
 done
-shift $((OPTIND -1))
-
+shift $((OPTIND - 1))
 
 # Cache sudo credentials
 sudo -v

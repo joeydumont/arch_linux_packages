@@ -18,13 +18,13 @@ makedepends=(
   cmake qt6-base
 )
 source=(
-    git+https://github.com/snes9xgit/snes9x.git
-    fix_jma_defines.patch
-    snes9x-qt.desktop
+  git+https://github.com/snes9xgit/snes9x.git
+  fix_jma_defines.patch
+  snes9x-qt.desktop
 )
 sha256sums=('SKIP'
-            '2e299aeb22c696a6150132b9b756026c9be133423c068383789a5df6448c7249'
-            '5df0093883173c8a22cc99349fe5b4f4367d386990ddfa193ee138d430ef2c8e')
+  '2e299aeb22c696a6150132b9b756026c9be133423c068383789a5df6448c7249'
+  '5df0093883173c8a22cc99349fe5b4f4367d386990ddfa193ee138d430ef2c8e')
 
 pkgver() {
   cd "${_pkgbase}"
@@ -38,8 +38,8 @@ prepare() {
   cd unix
   autoreconf -fiv
 
-  cd ${srcdir}/${_pkgbase}
-  patch -p1 -i ${srcdir}/fix_jma_defines.patch
+  cd "${srcdir}/${_pkgbase}"
+  patch -p1 -i "${srcdir}/fix_jma_defines.patch"
 }
 
 build() {

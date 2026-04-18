@@ -1,0 +1,21 @@
+#!/bin/bash
+
+EXIT_STATUS=0
+set +eo pipefail
+while IFS= read -d '' -r pkg; do
+  # Emulate rua shellcheck.
+  # We only do this because `rua shellcheck` doesn't allow us to pass options
+  # to shellcheck, otherwise we could pass `-S info` to error on info/warnings.
+  # `rua shellcheck` also adds lines prior to the start of the PKGBUILD, so the error
+  # reporting doesn't have the proper line number.
+  echo "$pkg"
+  printf "%s\n%s" "$(cat "$pkg/PKGBUILD")" "$(cat PKGBUILD-suffix.sh)" | shellcheck -o=all -e SC2164 -s bash -S info /dev/stdin
+  ((EXIT_STATUS |= PIPESTATUS[1]))
+done < <(find . -mindepth 1 -maxdepth 1 -type d ! -iname '*.git' ! -iwholename "./mips64-elf*" ! -iwholename "./utils*" -print0 | sort -nr)
+
+while IFS= read -d '' -r script; do
+  shellcheck -o=all -S info "$script"
+  ((EXIT_STATUS |= $?))
+done < <(find . -maxdepth 2 -type f ! -iname "PKGBUILD*" -iname "*.sh" -print0)
+
+exit $EXIT_STATUS

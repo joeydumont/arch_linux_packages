@@ -9,7 +9,9 @@ fi
 EXIT_STATUS=0
 set +e
 while IFS= read -d '' -r script; do
-  shfmt "$SHFMT_ARGS" "$script"
+  # SHFMT_ARGS is intentionally unquoted to allow for multiple arguments
+  # shellcheck disable=SC2086 
+  shfmt $SHFMT_ARGS "$script"
   ((EXIT_STATUS |= $?))
 done < <(find . -maxdepth 2 -type f \( -iname "PKGBUILD" -or -iname "*.sh" \) \( ! -iwholename "./mips64-elf*" \) -print0 | sort -nr)
 

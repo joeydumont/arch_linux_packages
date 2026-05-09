@@ -1,153 +1,266 @@
 #!/usr/bin/env bash
+set -euo pipefail
 
-###############################################################################
-# This script is meant to build all components of the mips64-ultra-elf        #
-# toolchain and test it by compiling both gz and uss64. Once that's done, I   #
-# should be notified via email so that I can run the ROMs.                    #
-###############################################################################
-
-# Kill background jobs started by this script.
 trap 'trap - SIGTERM && kill -- -$$' SIGINT SIGTERM EXIT
 
-# Remember PROMPT_COMMAND
-MIPS_PROMPT_COMMAND=${PROMPT_COMMAND}
+#------------------------------------------------------------------------------
+# Globals
+#------------------------------------------------------------------------------
+FORCE_REBUILD=0
+DRY_RUN=0
+USE_TMUX=0
 
-# some basic output functions (from Gentoo Prefix bootstrap)
-eerror() { echo "!!! $*" 1>&2; }
-einfo() { echo "* $*"; }
+declare -a BUILT=()
+declare -a SKIPPED=()
+declare -a FAILED=()
 
-# Change xterm tab title.
-push_prompt_command() {
-  echo -en "\033]0; $1 \a"
+#------------------------------------------------------------------------------
+# Logging
+#------------------------------------------------------------------------------
+eerror() { echo "!!! $*" >&2; }
+einfo()  { echo "* $*"; }
+
+#------------------------------------------------------------------------------
+# Command runner
+#------------------------------------------------------------------------------
+run() {
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    echo "[dry-run] $*"
+  else
+    "$@"
+  fi
 }
 
-# Revert tab title to default value.
-pop_prompt_command() {
-  eval "$MIPS_PROMPT_COMMAND"
+#------------------------------------------------------------------------------
+# Usage
+#------------------------------------------------------------------------------
+usage() {
+  cat <<EOF
+Usage: $(basename "$0") [options]
+
+Options:
+  -t <variant>     Toolchain variant (default: mips64-ultra-elf)
+  -c <chroot>      Path to chroot
+  -f               Force rebuild
+  -n, --dry-run    Show what would be executed
+  -m, --tmux       Auto-open tail in tmux pane
+  -h               Show this help
+EOF
 }
 
-# Extract pkgver from the PKGBUILD
+#------------------------------------------------------------------------------
+# Prompt title helpers
+#------------------------------------------------------------------------------
+ORIG_PROMPT_COMMAND=${PROMPT_COMMAND:-}
+push_prompt_command() { echo -en "\033]0; $1 \a"; }
+pop_prompt_command()  { [[ -n "$ORIG_PROMPT_COMMAND" ]] && eval "$ORIG_PROMPT_COMMAND"; }
+
+#------------------------------------------------------------------------------
+# tmux integration
+#------------------------------------------------------------------------------
+open_tmux_tail() {
+  local log_path="$1"
+
+  [[ "$USE_TMUX" -eq 1 ]] || return
+  [[ -n "${TMUX:-}" ]] || return
+
+  if tmux list-panes -F '#{pane_title}' 2>/dev/null | grep -q '^build-log$'; then
+    tmux send-keys -t build-log "clear; tail -f \"$log_path\"" C-m
+  else
+    tmux split-window -v -p 30 "tail -f \"$log_path\""
+    tmux select-pane -T build-log
+  fi
+}
+
+#------------------------------------------------------------------------------
+# PKGBUILD helpers
+#------------------------------------------------------------------------------
 get_pkgver() {
-  # Dynamically sourced, not useful for shellcheck.
-  # shellcheck disable=SC1091
+  # shellcheck disable=SC1091,SC2154
   source PKGBUILD
-
-  # Variables from PKGBUILD, which shellcheck can't source.
-  # shellcheck disable=SC2154
-  echo "${pkgver}"-"${pkgrel}"
+  echo "${pkgver}-${pkgrel}"
 }
 
 check_last_build() {
-  # Check that the last build was successful.
-  diff <(sha256sum PKGBUILD) <(cat .last_successful_build_chksum 2> /dev/null) &> /dev/null
-  return $?
+  diff <(sha256sum PKGBUILD) \
+       <(cat .last_successful_build_chksum 2>/dev/null) \
+       &>/dev/null
 }
 
 save_last_build() {
   sha256sum PKGBUILD > .last_successful_build_chksum
 }
 
-# Build the specified package.
-# $1: Directory where the PKGBUILD is.
-# $2...: Built dependencies.
+#------------------------------------------------------------------------------
+# Build function
+#------------------------------------------------------------------------------
 build_package() {
-  push_prompt_command "Building $1..."
+  local dir="$1"
+  shift
+
+  push_prompt_command "Building $dir..."
+  local cwd
   cwd=$(pwd)
-  cd "$(pwd)/$1" || (
-    eerror "Directory does not exist."
-    exit 1
-  )
 
-  makepkg -o &> /dev/null
+  if ! cd "$dir"; then
+    eerror "Missing directory: $dir"
+    FAILED+=("$dir")
+    return 1
+  fi
 
-  if ! check_last_build || [[ ! ${FORCE_REBUILD} -eq 0 ]]; then
-    einfo "Building $1"
-    einfo "  * You can follow the build by running "
-    echo "       tail -f ${cwd}/$1/build.log"
-    # Rebuild packages that depend on this package (assumes that invocations are done in dep order).
-    export FORCE_REBUILD=1
-    if [[ "$#" -eq 1 ]]; then
-      makechrootpkg -c -r "$CHROOT" &> build.log || {
-        eerror "Failed to build $1"
-        exit 1
-      }
+  run makepkg -o &>/dev/null || true
+
+  local log_file="build-${dir}.log"
+  local log_path="${cwd}/${dir}/${log_file}"
+
+  if ! check_last_build || [[ "$FORCE_REBUILD" -eq 1 ]]; then
+    einfo "Building $dir"
+    einfo "  tail -f \"$log_path\""
+
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+      echo "[dry-run] would open tmux pane"
     else
-      PKGS=
-      for ((i = 2; i <= $#; i++)); do
-        PKGS+=" -I ${!i}"
-      done
-
-      # PKGS can't be quoted here, otherwise it doesn't get passed properly ot makechrootpkg.
-      # shellcheck disable=SC2086
-      makechrootpkg -c -r "$CHROOT" ${PKGS} &> build.log || {
-        eerror "Failed to build $1"
-        exit 1
-      }
+      open_tmux_tail "$log_path"
     fi
-    save_last_build
+
+    export FORCE_REBUILD=1
+
+    if [[ "$#" -eq 0 ]]; then
+      if run makechrootpkg -c -r "$CHROOT" &> "$log_file"; then
+        BUILT+=("$dir")
+      else
+        eerror "Failed: $dir"
+        FAILED+=("$dir")
+        return 1
+      fi
+    else
+      local pkgs=()
+      for dep in "$@"; do pkgs+=(-I "$dep"); done
+
+      if run makechrootpkg -c -r "$CHROOT" "${pkgs[@]}" &> "$log_file"; then
+        BUILT+=("$dir")
+      else
+        eerror "Failed: $dir"
+        FAILED+=("$dir")
+        return 1
+      fi
+    fi
+
+    run save_last_build
   else
-    einfo "Already built $1."
+    einfo "Skipping $dir (up-to-date)"
+    SKIPPED+=("$dir")
   fi
 
   PKGVER=$(get_pkgver)
   export PKGVER
-  cd "${cwd}" || exit 1
+
+  cd "$cwd" || exit 1
   pop_prompt_command
 }
 
-# Get path to this script.
+#------------------------------------------------------------------------------
+# Resolve script dir
+#------------------------------------------------------------------------------
 SOURCE="${BASH_SOURCE[0]}"
-while [ -h "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symlink
-  DIR="$(cd -P "$(dirname "$SOURCE")" > /dev/null 2>&1 && pwd)"
+while [[ -h "$SOURCE" ]]; do
+  DIR="$(cd -P "$(dirname "$SOURCE")" >/dev/null 2>&1 && pwd)"
   SOURCE="$(readlink "$SOURCE")"
-  [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE" # if $SOURCE was a relative symlink, we need to resolve it relative to the path where the symlink file was located
+  [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE"
 done
+SCRIPT_DIR="$(cd -P "$(dirname "$SOURCE")" >/dev/null 2>&1 && pwd)"
 
-# Provide default values for some variables.
-CHROOT="$(cd -P "$(dirname "$SOURCE")" > /dev/null 2>&1 && pwd)"/chroot
+#------------------------------------------------------------------------------
+# Defaults
+#------------------------------------------------------------------------------
+CHROOT="${SCRIPT_DIR}/chroot"
 VARIANT="mips64-ultra-elf"
 NEWLIB_ARCH="x86_64"
-FORCE_REBUILD=0
 
-while getopts ":t:fc:" opt; do
-  case ${opt} in
-    t)
-      VARIANT=$OPTARG
-      NEWLIB_ARCH=any
+#------------------------------------------------------------------------------
+# Args
+#------------------------------------------------------------------------------
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -t)
+      VARIANT="$2"
+      NEWLIB_ARCH="any"
+      shift 2
       ;;
-    f)
+    -c)
+      CHROOT="$2"
+      shift 2
+      ;;
+    -f)
       FORCE_REBUILD=1
-      einfo "Forcing a rebuild of ALL packages in the toolchain."
+      shift
       ;;
-    c)
-      CHROOT="$OPTARG"
-      einfo "Building in a non-default chroot: $CHROOT"
+    -n|--dry-run)
+      DRY_RUN=1
+      shift
+      ;;
+    -m|--tmux)
+      USE_TMUX=1
+      shift
+      ;;
+    -h)
+      usage
+      exit 0
       ;;
     *)
-      echo "Invalid option: -$OPTARG requires an argument" 1>&2
+      eerror "Unknown option: $1"
+      usage
       exit 1
       ;;
   esac
 done
-shift $((OPTIND - 1))
 
-# Cache sudo credentials
-sudo -v
-while sleep 180; do sudo -v; done &
+#------------------------------------------------------------------------------
+# Sudo keepalive
+#------------------------------------------------------------------------------
+run sudo -v
+( while sleep 180; do run sudo -v; done ) &
 
-# Update the chroot.
-arch-nspawn "$CHROOT"/root pacman -Syu
+#------------------------------------------------------------------------------
+# Build sequence
+#------------------------------------------------------------------------------
+run arch-nspawn "$CHROOT/root" pacman -Syu
 
-build_package "${VARIANT}"-binutils
-BINUTILS_VER="${PKGVER}"
+build_package "${VARIANT}-binutils"
+BINUTILS_VER="$PKGVER"
 
-build_package "${VARIANT}"-gcc-stage1 ../"${VARIANT}"-binutils/"${VARIANT}"-binutils-"${BINUTILS_VER}"-x86_64.pkg.tar.zst
-GCCSTAGE1_VER="${PKGVER}"
+build_package "${VARIANT}-gcc-stage1" \
+  "../${VARIANT}-binutils/${VARIANT}-binutils-${BINUTILS_VER}-x86_64.pkg.tar.zst"
+GCCSTAGE1_VER="$PKGVER"
 
-build_package "${VARIANT}"-newlib ../"${VARIANT}"-binutils/"${VARIANT}"-binutils-"${BINUTILS_VER}"-x86_64.pkg.tar.zst ../"${VARIANT}"-gcc-stage1/"${VARIANT}"-gcc-stage1-"${GCCSTAGE1_VER}"-x86_64.pkg.tar.zst
-NEWLIB_VER="${PKGVER}"
+build_package "${VARIANT}-newlib" \
+  "../${VARIANT}-binutils/${VARIANT}-binutils-${BINUTILS_VER}-x86_64.pkg.tar.zst" \
+  "../${VARIANT}-gcc-stage1/${VARIANT}-gcc-stage1-${GCCSTAGE1_VER}-x86_64.pkg.tar.zst"
+NEWLIB_VER="$PKGVER"
 
-build_package "${VARIANT}"-gcc ../"${VARIANT}"-binutils/"${VARIANT}"-binutils-"${BINUTILS_VER}"-x86_64.pkg.tar.zst ../"${VARIANT}"-newlib/"${VARIANT}"-newlib-"${NEWLIB_VER}"-"${NEWLIB_ARCH}".pkg.tar.zst
-#GCC_VER="${PKGVER}"
+build_package "${VARIANT}-gcc" \
+  "../${VARIANT}-binutils/${VARIANT}-binutils-${BINUTILS_VER}-x86_64.pkg.tar.zst" \
+  "../${VARIANT}-newlib/${VARIANT}-newlib-${NEWLIB_VER}-${NEWLIB_ARCH}.pkg.tar.zst"
 
-build_package "${VARIANT}"-gdb
+build_package "${VARIANT}-gdb"
+
+#------------------------------------------------------------------------------
+# Summary
+#------------------------------------------------------------------------------
+echo
+echo "========== BUILD SUMMARY =========="
+
+echo "Built (${#BUILT[@]}):"
+printf '  - %s\n' "${BUILT[@]:-none}"
+
+echo
+echo "Skipped (${#SKIPPED[@]}):"
+printf '  - %s\n' "${SKIPPED[@]:-none}"
+
+echo
+echo "Failed (${#FAILED[@]}):"
+printf '  - %s\n' "${FAILED[@]:-none}"
+
+echo "==================================="
+
+[[ ${#FAILED[@]} -gt 0 ]] && exit 1

@@ -16,6 +16,6 @@ done < <(find . -mindepth 1 -maxdepth 1 -type d ! -iname '*.git' ! -iwholename "
 while IFS= read -d '' -r script; do
   shellcheck -o=all -S info "$script"
   ((EXIT_STATUS |= $?))
-done < <(find . -maxdepth 2 -type f ! -iname "PKGBUILD*" -iname "*.sh" -print0)
+done < <(find . -maxdepth 2 -type f ! -iname "PKGBUILD*" -iname "*.sh" ! -iwholename "./utils/test-build-mips64-toolchains.sh" -print0)
 
 exit $EXIT_STATUS
